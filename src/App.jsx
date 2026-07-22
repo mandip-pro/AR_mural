@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./App.css";
-import MindARViewer from "./mindar-viewer";
-import MindARThreeViewer from "./mindar-three-viewer";
+import MindARViewer from "./mindar-viewer.jsx";
+import MindARThreeViewer from "./mindar-three-viewer.jsx";
 
 function App() {
   const [started, setStarted] = useState(null);

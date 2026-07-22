@@ -2,31 +2,32 @@
   "name": "mind-ar-react",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "dependencies": {
-    "@testing-library/jest-dom": "^5.11.4",
-    "@testing-library/react": "^11.1.0",
-    "@testing-library/user-event": "^12.1.10",
     "aframe": "^1.4.2",
     "mind-ar": "^1.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "^5.0.1",
-    "three": "^0.150.1",
-    "web-vitals": "^1.0.1"
+    "three": "^0.150.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  },
+  "overrides": {
+    "canvas": "3.2.3"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "start-https": "HTTPS=true react-scripts start",
-    "start-mobile": "HTTPS=true HOST=0.0.0.0 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "start": "vite --host 0.0.0.0",
+    "dev": "vite --host 0.0.0.0",
+    "start-https": "vite --host 0.0.0.0",
+    "start-mobile": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "browserslist": {
     "production": [
