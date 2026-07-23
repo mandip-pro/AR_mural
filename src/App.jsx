@@ -8,15 +8,6 @@ function App() {
 
   return (
     <div className="App">
-      {started === null && (
-        <h1>
-          Example React component with{" "}
-          <a href="https://github.com/hiukim/mind-ar-js" target="_blank" rel="noreferrer">
-            MindAR
-          </a>
-        </h1>
-      )}
-
       <div className="control-buttons">
         {started === null && (
           <button
@@ -27,7 +18,7 @@ function App() {
             Start AFRAME version
           </button>
         )}
-        {started === null && (
+        {/* {started === null && (
           <button
             onClick={() => {
               setStarted("three");
@@ -35,7 +26,7 @@ function App() {
           >
             Start ThreeJS version
           </button>
-        )}
+        )} */}
         {started !== null && (
           <button
             onClick={() => {
@@ -53,11 +44,11 @@ function App() {
         </div>
       )}
 
-      {started === "three" && (
+      {/* {started === "three" && (
         <div className="container">
           <MindARThreeViewer />
         </div>
-      )}
+      )} */}
     </div>
   );
 }
