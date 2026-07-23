@@ -62,6 +62,9 @@ const MindARViewer = () => {
           console.warn("MindAR AFRAME stop error (safe to ignore):", e);
         }
       }
+      document.querySelectorAll(".mindar-ui-overlay").forEach((overlay) => {
+        overlay.remove();
+      });
     };
   }, []);
 

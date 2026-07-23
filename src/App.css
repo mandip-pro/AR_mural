@@ -1,41 +1,151 @@
 .App {
-  text-align: center;
+  min-height: 100dvh;
+  color: #151515;
+  background: #f8faf7;
 }
 
-.control-buttons {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
+button {
+  font: inherit;
+}
+
+.start-screen {
   display: flex;
-  gap: 12px;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
-.control-buttons button {
-  padding: 12px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
+.start-content {
+  width: min(100%, 420px);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #5d6f62;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.start-content h1 {
+  margin: 0;
+  color: #111;
+  font-size: clamp(2rem, 8vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.start-copy {
+  margin: 16px 0 28px;
+  color: #4d544f;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.primary-action,
+.stop-button {
+  min-height: 52px;
+  border: 0;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
+  font-weight: 700;
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
-.control-buttons button:active {
-  background: rgba(40, 40, 40, 0.9);
+.primary-action {
+  width: 100%;
+  padding: 0 20px;
+  color: #fff;
+  background: #151515;
+}
+
+.primary-action:active,
+.stop-button:active {
+  transform: translateY(1px);
 }
 
 .container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   overflow: hidden;
-  background: #000;
+  background: #050505;
+}
+
+.camera-controls {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+.stop-button {
+  min-width: 96px;
+  padding: 0 18px;
+  color: #111;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body .mindar-ui-overlay {
+  z-index: 20;
+}
+
+body .mindar-ui-loading {
+  background: #050505;
+}
+
+body .mindar-ui-loading::after {
+  position: absolute;
+  top: calc(50% + 64px);
+  left: 50%;
+  width: min(240px, calc(100vw - 48px));
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  transform: translateX(-50%);
+  content: "Opening camera...";
+}
+
+body .mindar-ui-loading .loader {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  border-top-color: #fff;
+  opacity: 1;
+}
+
+body .mindar-ui-scanning .scanning {
+  width: min(72vw, 320px);
+  height: min(72vw, 320px);
+}
+
+body .mindar-ui-scanning .scanning .inner {
+  opacity: 0.72;
+}
+
+@media (min-width: 700px) {
+  .start-screen {
+    padding: 48px;
+  }
+
+  .primary-action {
+    width: auto;
+    min-width: 180px;
+  }
+
+  .stop-button {
+    min-width: 104px;
+  }
+
+  .camera-controls {
+    right: 24px;
+    bottom: 24px;
+  }
 }
