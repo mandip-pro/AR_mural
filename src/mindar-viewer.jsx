@@ -2,15 +2,12 @@ import { useEffect, useRef } from "react";
 import "aframe";
 import "mind-ar/dist/mindar-image-aframe.prod.js";
 
-import dummyData from "./Constants/data.js";
-
-const MindARViewer = () => {
+const MindARViewer = ({ data }) => {
   const sceneRef = useRef(null);
 
   useEffect(() => {
     const scene = sceneRef.current;
     let arStarted = false;
-
     const onRenderStart = () => {
       const arSystem = scene?.systems["mindar-image-system"];
       if (!arSystem) return;
@@ -19,7 +16,7 @@ const MindARViewer = () => {
       arSystem.start();
 
       // Set up per-target event listeners
-      dummyData.targets.forEach((target) => {
+      data.targets.forEach((target) => {
         const targetEl = document.querySelector(
           `#target-${target.targetIndex}`,
         );
@@ -66,7 +63,7 @@ const MindARViewer = () => {
         overlay.remove();
       });
     };
-  }, []);
+  }, [data.targets]);
 
   return (
     <a-scene
@@ -77,7 +74,7 @@ const MindARViewer = () => {
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
       mindar-image={`
-        imageTargetSrc: ${dummyData.mindFile};
+        imageTargetSrc: ${data.mindFile};
         autoStart: false;
         uiLoading: yes;
         uiScanning: yes;
@@ -87,7 +84,7 @@ const MindARViewer = () => {
       `}
     >
       <a-assets>
-        {dummyData.targets.map((target) => (
+        {data.targets.map((target) => (
           <video
             key={target.targetIndex}
             id={`video-${target.targetIndex}`}
@@ -105,7 +102,7 @@ const MindARViewer = () => {
 
       <a-camera position="0 0 0" look-controls="enabled:false" />
 
-      {dummyData.targets.map((target) => (
+      {data.targets.map((target) => (
         <a-entity
           key={target.targetIndex}
           id={`target-${target.targetIndex}`}

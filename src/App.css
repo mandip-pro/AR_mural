@@ -44,6 +44,13 @@ button {
   line-height: 1.5;
 }
 
+.data-status {
+  margin: -12px 0 20px;
+  color: #6b716d;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .primary-action,
 .stop-button {
   min-height: 52px;
@@ -58,6 +65,12 @@ button {
   padding: 0 20px;
   color: #fff;
   background: #151515;
+}
+
+.primary-action:disabled {
+  color: rgba(255, 255, 255, 0.7);
+  background: #777d79;
+  cursor: wait;
 }
 
 .primary-action:active,
