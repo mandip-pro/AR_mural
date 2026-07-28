@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ar-mural-frontend:latest
+    container_name: ar-mural-frontend
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
