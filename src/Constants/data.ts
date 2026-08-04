@@ -16,18 +16,18 @@ const dummyData: DummyData = {
     {
       targetIndex: 0,
       video:
-        "https://res.cloudinary.com/mandip/video/upload/v1784786061/ar-targets/videos/se7y5fgit4lh2qgi7xpm.mp4",
+        "https://res.cloudinary.com/mandip/video/upload/v1785823218/flood_r3qhwi.mp4",
       model: "/goal.glb",
       thumbnail:
-        "https://res.cloudinary.com/mandip/image/upload/v1784786060/ar-targets/images/latcopfityphaunefust.png",
+        "https://res.cloudinary.com/mandip/image/upload/v1785823153/flood_y7db6c.png",
     },
     {
       targetIndex: 1,
       video:
-        "https://res.cloudinary.com/mandip/video/upload/v1784792145/demo_video2_wgo2mw.mp4",
+        "https://res.cloudinary.com/mandip/video/upload/v1785823641/video_gnqdlk.mp4",
       model: "",
       thumbnail:
-        "https://res.cloudinary.com/mandip/image/upload/v1784792118/model2_fu3oea.jpg",
+        "https://res.cloudinary.com/mandip/image/upload/v1785823655/Rajdevi_Muncipality_Left_5_x_10_ft_gmglwm.png",
     },
   ],
 };
