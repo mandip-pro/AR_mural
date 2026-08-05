@@ -74,8 +74,8 @@ button {
 
 .camera-controls {
   position: fixed;
+  top: calc(16px + env(safe-area-inset-top));
   right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 2147483647;
   pointer-events: none;
 }
@@ -146,6 +146,6 @@ body .mindar-ui-scanning .scanning .inner {
 
   .camera-controls {
     right: 24px;
-    bottom: 24px;
+    top: 24px;
   }
 }
