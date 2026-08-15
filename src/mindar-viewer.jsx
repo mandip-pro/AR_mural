@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import "aframe";
 import "mind-ar/dist/mindar-image-aframe.prod.js";
 
-import dummyData from "./Constants/data.js";
+import muralData from "./Constants/data.js";
 import rewind from "./assets/icons/rewind.svg";
 import cancel from "./assets/icons/cancel.svg";
 import play from "./assets/icons/play.svg";
@@ -14,12 +14,24 @@ const MindARViewer = () => {
   const videoEntityRefs = useRef({});
   const videoElRefs = useRef({});
 
-  const zoomWrapperRef = useRef(null);
+  const transformsRef = useRef({});
 
-  const [activeTarget, setActiveTarget] = useState(null);
+  const focusedTargetRef = useRef(null);
+
+  const [focusedTarget, setFocusedTarget] = useState(null);
+  const [trackedTargets, setTrackedTargets] = useState(() => new Set());
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  const isFocusedTracked =
+    focusedTarget !== null && trackedTargets.has(focusedTarget);
+
+  const isDetached = focusedTarget !== null && !isFocusedTracked;
+
+  useEffect(() => {
+    focusedTargetRef.current = focusedTarget;
+  }, [focusedTarget]);
 
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -35,7 +47,14 @@ const MindARViewer = () => {
     return { arWidth, arHeight };
   };
 
-  // ---- AR setup ----
+  const resetEntityTransform = (targetIndex, z, p) => {
+    const entity = videoEntityRefs.current[targetIndex];
+    if (!entity) return;
+    entity.setAttribute("scale", `${z} ${z} 1`);
+    entity.setAttribute("position", `${p.x} ${p.y} 0.02`);
+  };
+
+  //AR setup
   useEffect(() => {
     const scene = sceneRef.current;
     let arStarted = false;
@@ -48,46 +67,67 @@ const MindARViewer = () => {
       arStarted = true;
       arSystem.start();
 
-      dummyData.targets.forEach((target) => {
-        const targetEl = document.querySelector(
-          `#target-${target.targetIndex}`,
-        );
-        const video = document.querySelector(`#video-${target.targetIndex}`);
-        const videoEntity = document.querySelector(
-          `#video-entity-${target.targetIndex}`,
-        );
+      muralData.targets.forEach((target) => {
+        const idx = target.targetIndex;
+        const targetEl = document.querySelector(`#target-${idx}`);
+        const videoEntity = document.querySelector(`#video-entity-${idx}`);
+        const video = videoElRefs.current[idx];
 
-        videoElRefs.current[target.targetIndex] = video;
-        videoEntityRefs.current[target.targetIndex] = videoEntity;
-
-        if (video) {
-          video.pause();
-          video.currentTime = 0;
-        }
-        // Hidden until found, so no stray frame is visible beforehand
+        videoEntityRefs.current[idx] = videoEntity;
         videoEntity?.setAttribute("visible", "false");
 
-        targetEl?.addEventListener("targetFound", async () => {
-          setActiveTarget(target.targetIndex);
-          setZoom(1);
-          setPan({ x: 0, y: 0 });
+        video?.addEventListener("play", () => {
+          if (focusedTargetRef.current === idx) setIsPlaying(true);
+        });
+        video?.addEventListener("pause", () => {
+          if (focusedTargetRef.current === idx) setIsPlaying(false);
+        });
+        video?.addEventListener("ended", () => {
+          if (focusedTargetRef.current === idx) setIsPlaying(false);
+        });
 
+        targetEl?.addEventListener("targetFound", async () => {
+          setTrackedTargets((prev) => new Set(prev).add(idx));
           videoEntity?.setAttribute("visible", "true");
 
-          try {
-            if (video) {
-              video.currentTime = 0;
-              await video.play();
-              setIsPlaying(true);
+          if (focusedTargetRef.current !== idx) {
+            transformsRef.current[idx] = { zoom: 1, pan: { x: 0, y: 0 } };
+            setFocusedTarget(idx);
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+            resetEntityTransform(idx, 1, { x: 0, y: 0 });
+          } else {
+            const saved = transformsRef.current[idx] || {
+              zoom: 1,
+              pan: { x: 0, y: 0 },
+            };
+            setZoom(saved.zoom);
+            setPan(saved.pan);
+            resetEntityTransform(idx, saved.zoom, saved.pan);
+          }
+
+          const el = videoElRefs.current[idx];
+          if (el && el.paused) {
+            try {
+              await el.play();
+            } catch (e) {
+              console.error(e);
             }
-          } catch (e) {
-            console.error(e);
           }
-          try {
-            arSystemRef.current?.pause(true);
-          } catch (e) {
-            console.warn("MindAR pause error:", e);
+
+          if (el) {
+            setIsPlaying(!el.paused && !el.ended);
           }
+        });
+
+        targetEl?.addEventListener("targetLost", () => {
+          setTrackedTargets((prev) => {
+            const next = new Set(prev);
+            next.delete(idx);
+            return next;
+          });
+
+          videoEntity?.setAttribute("visible", "false");
         });
       });
     };
@@ -110,22 +150,17 @@ const MindARViewer = () => {
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (activeTarget === null) return;
-    const video = videoElRefs.current[activeTarget];
+    if (focusedTarget === null) return;
+    const video = videoElRefs.current[focusedTarget];
     if (!video) return;
-    if (video.paused) {
-      video.play();
-      setIsPlaying(true);
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  }, [activeTarget]);
+    if (video.paused) video.play();
+    else video.pause();
+  }, [focusedTarget]);
 
   const skip = useCallback(
     async (seconds) => {
-      if (activeTarget === null) return;
-      const video = videoElRefs.current[activeTarget];
+      if (focusedTarget === null) return;
+      const video = videoElRefs.current[focusedTarget];
       if (!video || !video.duration || !isFinite(video.duration)) return;
 
       const shouldResume = !video.paused && !video.ended;
@@ -137,68 +172,94 @@ const MindARViewer = () => {
       if (shouldResume) {
         try {
           await video.play();
-          setIsPlaying(true);
         } catch (e) {
           console.error(e);
-          setIsPlaying(false);
         }
       }
     },
-    [activeTarget],
+    [focusedTarget],
   );
 
-  const clampPan = useCallback((x, y, currentZoom) => {
-    const el = zoomWrapperRef.current;
-    const width = el?.clientWidth || window.innerWidth;
-    const height = el?.clientHeight || window.innerHeight;
-    const maxX = (width * (currentZoom - 1)) / 2;
-    const maxY = (height * (currentZoom - 1)) / 2;
-    return {
-      x: Math.min(Math.max(x, -maxX), maxX),
-      y: Math.min(Math.max(y, -maxY), maxY),
-    };
-  }, []);
+  const clampPan = useCallback(
+    (x, y, currentZoom) => {
+      if (focusedTarget === null) return { x: 0, y: 0 };
+      const target = muralData.targets.find(
+        (t) => t.targetIndex === focusedTarget,
+      );
+      if (!target) return { x: 0, y: 0 };
+      const { arWidth, arHeight } = getBaseGeometry(target);
+      const maxX = (arWidth * (currentZoom - 1)) / 2;
+      const maxY = (arHeight * (currentZoom - 1)) / 2;
+      return {
+        x: Math.min(Math.max(x, -maxX), maxX),
+        y: Math.min(Math.max(y, -maxY), maxY),
+      };
+    },
+    [focusedTarget],
+  );
+
+  const applyAndRemember = useCallback(
+    (z, p) => {
+      if (focusedTarget === null) return;
+      transformsRef.current[focusedTarget] = { zoom: z, pan: p };
+      resetEntityTransform(focusedTarget, z, p);
+    },
+    [focusedTarget],
+  );
 
   const zoomIn = useCallback(() => {
+    if (!isFocusedTracked) return;
     setZoom((z) => {
       const next = Math.min(z + 0.25, 3);
-      setPan((p) => clampPan(p.x, p.y, next));
+      setPan((p) => {
+        const clamped = clampPan(p.x, p.y, next);
+        applyAndRemember(next, clamped);
+        return clamped;
+      });
       return next;
     });
-  }, [clampPan]);
+  }, [clampPan, applyAndRemember, isFocusedTracked]);
 
   const zoomOut = useCallback(() => {
+    if (!isFocusedTracked) return;
     setZoom((z) => {
       const next = Math.max(z - 0.25, 1);
-      setPan((p) => clampPan(p.x, p.y, next));
+      setPan((p) => {
+        const clamped = clampPan(p.x, p.y, next);
+        applyAndRemember(next, clamped);
+        return clamped;
+      });
       return next;
     });
-  }, [clampPan]);
+  }, [clampPan, applyAndRemember, isFocusedTracked]);
+
+  const DRAG_TO_WORLD = 0.003;
 
   const handlePointerDown = useCallback(
     (e) => {
-      if (zoom <= 1 || activeTarget === null) return;
+      if (zoom <= 1 || !isFocusedTracked) return;
       isDraggingRef.current = true;
       dragStartRef.current = { x: e.clientX, y: e.clientY };
       panStartRef.current = { ...pan };
       e.currentTarget.setPointerCapture?.(e.pointerId);
     },
-    [zoom, pan, activeTarget],
+    [zoom, pan, isFocusedTracked],
   );
 
   const handlePointerMove = useCallback(
     (e) => {
       if (!isDraggingRef.current) return;
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
+      const dx = (e.clientX - dragStartRef.current.x) * DRAG_TO_WORLD;
+      const dy = -(e.clientY - dragStartRef.current.y) * DRAG_TO_WORLD;
       const next = clampPan(
         panStartRef.current.x + dx,
         panStartRef.current.y + dy,
         zoom,
       );
       setPan(next);
+      applyAndRemember(zoom, next);
     },
-    [clampPan, zoom],
+    [clampPan, applyAndRemember, zoom],
   );
 
   const handlePointerUp = useCallback((e) => {
@@ -208,173 +269,210 @@ const MindARViewer = () => {
 
   // ---- Close ----
   const handleClose = useCallback(() => {
-    if (activeTarget !== null) {
-      const video = videoElRefs.current[activeTarget];
-      const entity = videoEntityRefs.current[activeTarget];
+    if (focusedTarget !== null) {
+      const video = videoElRefs.current[focusedTarget];
+      const entity = videoEntityRefs.current[focusedTarget];
       if (video) {
         video.pause();
         video.currentTime = 0;
       }
-      entity?.setAttribute("visible", "false"); // hide so no stuck frame shows
+      entity?.setAttribute("visible", "false");
+      delete transformsRef.current[focusedTarget];
     }
 
-    setActiveTarget(null);
+    focusedTargetRef.current = null;
+    setFocusedTarget(null);
     setIsPlaying(false);
     setZoom(1);
     setPan({ x: 0, y: 0 });
-
-    // Resume camera + tracking so a new target can be found
-    try {
-      arSystemRef.current?.unpause();
-    } catch (e) {
-      console.warn("MindAR unpause error:", e);
-    }
-  }, [activeTarget]);
+  }, [focusedTarget]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div
-        ref={zoomWrapperRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          overflow: "hidden",
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: "center center",
-        }}
+      <a-scene
+        ref={sceneRef}
+        embedded
+        color-space="sRGB"
+        renderer="colorManagement: true; physicallyCorrectLights: true"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        mindar-image={`
+          imageTargetSrc: ${muralData.mindFile};
+          autoStart: false;
+          uiLoading: yes;
+          uiScanning: no;
+          uiError: yes;
+          filterMinCF: 0.0001;
+          filterBeta: 0.01;
+        `}
       >
-        <a-scene
-          ref={sceneRef}
-          embedded
-          color-space="sRGB"
-          renderer="colorManagement: true; physicallyCorrectLights: true"
-          vr-mode-ui="enabled: false"
-          device-orientation-permission-ui="enabled: false"
-          mindar-image={`
-            imageTargetSrc: ${dummyData.mindFile};
-            autoStart: false;
-            uiLoading: yes;
-            uiScanning: yes;
-            uiError: yes;
-            filterMinCF: 0.0001;
-            filterBeta: 0.01;
-          `}
-        >
-          <a-assets>
-            {dummyData.targets.map((target) => (
-              <video
-                key={target.targetIndex}
-                id={`video-${target.targetIndex}`}
-                src={target.video}
-                preload="auto"
-                playsInline
-                webkit-playsinline="true"
-                crossorigin="anonymous"
+        <a-camera position="0 0 0" look-controls="enabled:false" />
+
+        {muralData.targets.map((target) => {
+          const { arWidth, arHeight } = getBaseGeometry(target);
+          return (
+            <a-entity
+              key={target.targetIndex}
+              id={`target-${target.targetIndex}`}
+              mindar-image-target={`targetIndex: ${target.targetIndex}`}
+            >
+              <a-video
+                id={`video-entity-${target.targetIndex}`}
+                src={`#video-${target.targetIndex}`}
+                width={arWidth}
+                height={arHeight}
+                position="0 0 0.02"
+                visible="false"
               />
-            ))}
-          </a-assets>
+            </a-entity>
+          );
+        })}
+      </a-scene>
 
-          <a-camera position="0 0 0" look-controls="enabled:false" />
+      {muralData.targets.map((target) => {
+        const idx = target.targetIndex;
+        const isThisDetachedOverlay = focusedTarget === idx && isDetached;
 
-          {dummyData.targets.map((target) => {
-            const { arWidth, arHeight } = getBaseGeometry(target);
-            return (
-              <a-entity
-                key={target.targetIndex}
-                id={`target-${target.targetIndex}`}
-                mindar-image-target={`targetIndex: ${target.targetIndex}`}
-              >
-                <a-video
-                  id={`video-entity-${target.targetIndex}`}
-                  src={`#video-${target.targetIndex}`}
-                  width={arWidth}
-                  height={arHeight}
-                  position="0 0 0.02"
-                  visible="false"
-                />
-              </a-entity>
-            );
-          })}
-        </a-scene>
-      </div>
-
-      {activeTarget !== null && (
-        <>
-          <div
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 100,
-              touchAction: "none",
-              cursor: zoom > 1 ? "grab" : "default",
-              background: "transparent",
+        return (
+          <video
+            key={idx}
+            id={`video-${idx}`}
+            ref={(el) => {
+              videoElRefs.current[idx] = el;
             }}
+            src={target.video}
+            preload="auto"
+            playsInline
+            webkit-playsinline="true"
+            crossOrigin="anonymous"
+            onClick={isThisDetachedOverlay ? togglePlay : undefined}
+            style={
+              isThisDetachedOverlay
+                ? {
+                    position: "fixed",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    maxWidth: "88vw",
+                    maxHeight: "70vh",
+                    width: "auto",
+                    height: "auto",
+                    objectFit: "contain",
+                    background: "transparent",
+                    borderRadius: 14,
+                    boxShadow: "0 10px 40px rgba(0,0,0,0.55)",
+                    zIndex: 50,
+                    cursor: "pointer",
+                  }
+                : {
+                    position: "fixed",
+                    top: -9999,
+                    left: -9999,
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: "none",
+                  }
+            }
           />
+        );
+      })}
 
-          <div
-            style={{
-              position: "fixed",
-              left: "50%",
-              bottom: 24,
-              transform: "translateX(-50%)",
-              zIndex: 101,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "10px 14px",
-              borderRadius: 999,
-              background: "rgba(0,0,0,0.65)",
-              backdropFilter: "blur(4px)",
-            }}
+      {isFocusedTracked && zoom > 1 && (
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            touchAction: "none",
+            cursor: "grab",
+            background: "transparent",
+          }}
+        />
+      )}
+
+      {focusedTarget !== null && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 24,
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 14px",
+            borderRadius: 999,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <button
+            onClick={() => skip(-10)}
+            style={btnStyle}
+            aria-label="Rewind 10s"
           >
-            <button
-              onClick={() => skip(-10)}
-              style={btnStyle}
-              aria-label="Rewind 10s"
-            >
-              <img
-                src={rewind}
-                alt="Rewind 10s"
-                style={{ width: 16, height: 16 }}
-              />
-            </button>
-            <button
-              onClick={togglePlay}
-              style={btnStyle}
-              aria-label="Play/Pause"
-            >
-              {isPlaying ? "+" : "▶️"}
-            </button>
-            <button
-              onClick={() => skip(10)}
-              style={btnStyle}
-              aria-label="Forward 10s"
-            >
-              <img
-                src={rewind}
-                alt="Forward 10s"
-                style={{ width: 16, height: 16, transform: "rotate(180deg)" }}
-              />
-            </button>
-            <button onClick={zoomOut} style={btnStyle} aria-label="Zoom out">
-              −
-            </button>
-            <button onClick={zoomIn} style={btnStyle} aria-label="Zoom in">
-              +
-            </button>
-            <button
-              onClick={handleClose}
-              style={{ ...btnStyle, background: "rgba(255,80,80,0.85)" }}
-              aria-label="Close"
-            >
-              <img src={cancel} alt="Close" style={{ width: 16, height: 16 }} />
-            </button>
-          </div>
-        </>
+            <img
+              src={rewind}
+              alt="Rewind 10s"
+              style={{ width: 16, height: 16 }}
+            />
+          </button>
+          <button onClick={togglePlay} style={btnStyle} aria-label="Play/Pause">
+            {isPlaying ? (
+              <img src={pause} style={{ width: 16, height: 16 }} />
+            ) : (
+              <img src={play} style={{ width: 16, height: 16 }} />
+            )}
+          </button>
+          <button
+            onClick={() => skip(10)}
+            style={btnStyle}
+            aria-label="Forward 10s"
+          >
+            <img
+              src={rewind}
+              alt="Forward 10s"
+              style={{ width: 16, height: 16, transform: "rotate(180deg)" }}
+            />
+          </button>
+          <button
+            onClick={zoomOut}
+            style={{
+              ...btnStyle,
+              opacity: isFocusedTracked ? 1 : 0.4,
+              cursor: isFocusedTracked ? "pointer" : "not-allowed",
+            }}
+            disabled={!isFocusedTracked}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            onClick={zoomIn}
+            style={{
+              ...btnStyle,
+              opacity: isFocusedTracked ? 1 : 0.4,
+              cursor: isFocusedTracked ? "pointer" : "not-allowed",
+            }}
+            disabled={!isFocusedTracked}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            onClick={handleClose}
+            style={{ ...btnStyle, background: "rgba(255,80,80,0.85)" }}
+            aria-label="Close"
+          >
+            <img src={cancel} alt="Close" style={{ width: 16, height: 16 }} />
+          </button>
+        </div>
       )}
     </div>
   );

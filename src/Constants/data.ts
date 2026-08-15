@@ -5,12 +5,12 @@ export interface TargetData {
   thumbnail: string;
 }
 
-export interface DummyData {
+export interface MuralData {
   mindFile: string;
   targets: TargetData[];
 }
 
-const dummyData: DummyData = {
+const muralData: MuralData = {
   mindFile: "/targets1.mind",
   targets: [
     {
@@ -32,4 +32,4 @@ const dummyData: DummyData = {
   ],
 };
 
-export default dummyData;
+export default muralData;
