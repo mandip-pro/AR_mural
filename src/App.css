@@ -72,6 +72,27 @@ button {
   background: #050505;
 }
 
+.detached-video {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(88vw, calc(70dvh * var(--video-aspect)));
+  height: auto;
+  object-fit: contain;
+  background: transparent;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+  z-index: 50;
+  cursor: pointer;
+}
+
+@media (orientation: landscape) {
+  .detached-video {
+    width: min(80vw, calc(60dvh * var(--video-aspect)));
+  }
+}
+
 .camera-controls {
   position: fixed;
   top: calc(16px + env(safe-area-inset-top));

@@ -23,8 +23,7 @@ const muralData: MuralData = {
     },
     {
       targetIndex: 1,
-      video:
-        "https://res.cloudinary.com/mandip/video/upload/v1785823641/video_gnqdlk.mp4",
+      video: "/video/hls-output/index.m3u8",
       model: "",
       thumbnail:
         "https://res.cloudinary.com/mandip/image/upload/v1785823655/Rajdevi_Muncipality_Left_5_x_10_ft_gmglwm.png",

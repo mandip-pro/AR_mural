@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import "aframe";
 import "mind-ar/dist/mindar-image-aframe.prod.js";
+import Hls from "hls.js";
 
 import muralData from "./Constants/data.js";
 import rewind from "./assets/icons/rewind.svg";
@@ -17,6 +18,7 @@ const MindARViewer = () => {
   const transformsRef = useRef({});
 
   const focusedTargetRef = useRef(null);
+  const trackedTargetsRef = useRef(new Set());
 
   const [focusedTarget, setFocusedTarget] = useState(null);
   const [trackedTargets, setTrackedTargets] = useState(() => new Set());
@@ -30,8 +32,44 @@ const MindARViewer = () => {
   const isDetached = focusedTarget !== null && !isFocusedTracked;
 
   useEffect(() => {
+    const players = [];
+    const hlsVideos = [];
+
+    muralData.targets.forEach((target) => {
+      if (!target.video.endsWith(".m3u8")) return;
+      const video = videoElRefs.current[target.targetIndex];
+      if (!video) return;
+      hlsVideos.push(video);
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = target.video;
+      } else if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(target.video);
+        hls.attachMedia(video);
+        players.push(hls);
+      } else {
+        console.error("HLS playback is not supported by this browser.");
+      }
+    });
+
+    return () => {
+      players.forEach((hls) => hls.destroy());
+      hlsVideos.forEach((video) => {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      });
+    };
+  }, []);
+
+  useEffect(() => {
     focusedTargetRef.current = focusedTarget;
   }, [focusedTarget]);
+
+  useEffect(() => {
+    trackedTargetsRef.current = trackedTargets;
+  }, [trackedTargets]);
 
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -332,6 +370,12 @@ const MindARViewer = () => {
       {muralData.targets.map((target) => {
         const idx = target.targetIndex;
         const isThisDetachedOverlay = focusedTarget === idx && isDetached;
+        const video = videoElRefs.current[idx];
+        const { arWidth, arHeight } = getBaseGeometry(target);
+        const aspectRatio =
+          video?.videoWidth && video?.videoHeight
+            ? video.videoWidth / video.videoHeight
+            : arWidth / arHeight;
 
         return (
           <video
@@ -340,29 +384,19 @@ const MindARViewer = () => {
             ref={(el) => {
               videoElRefs.current[idx] = el;
             }}
-            src={target.video}
+            src={target.video.endsWith(".m3u8") ? undefined : target.video}
+            muted={target.video.endsWith(".m3u8")}
             preload="auto"
             playsInline
             webkit-playsinline="true"
             crossOrigin="anonymous"
             onClick={isThisDetachedOverlay ? togglePlay : undefined}
+            className={isThisDetachedOverlay ? "detached-video" : undefined}
             style={
               isThisDetachedOverlay
                 ? {
-                    position: "fixed",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    maxWidth: "88vw",
-                    maxHeight: "70vh",
-                    width: "auto",
-                    height: "auto",
-                    objectFit: "contain",
-                    background: "transparent",
-                    borderRadius: 14,
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.55)",
-                    zIndex: 50,
-                    cursor: "pointer",
+                    "--video-aspect": aspectRatio,
+                    aspectRatio,
                   }
                 : {
                     position: "fixed",
